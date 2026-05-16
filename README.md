@@ -9,7 +9,7 @@
 ```
 
 | Device   | Interface | IP Address   | Network            |
-|----------|-----------|--------------|--------------------|
+|----------|-----------|--------------|--------------------| 
 | attacker | eth0      | 10.0.0.10/24 | External (net_ext) |
 | router   | eth0      | 10.0.0.1/24  | External (net_ext) |
 | router   | eth1      | 10.0.1.1/24  | Internal (net_int) |
@@ -57,12 +57,15 @@ The starting state assumes the Scapy exfiltration script is already deployed on 
 
 The monitor node requires a custom Docker image with Snort 3.
 It is available on Docker Hub and will be pulled automatically on first `lstart`:
+
     marcoscarpa04/snort3-kathara
 
 If you prefer to build it locally (~20 min):
 
-    cd ~/progetto
-    docker build -t marcoscarpa04/snort3-kathara .
+```bash
+cd ~/progetto
+docker build -t marcoscarpa04/snort3-kathara .
+```
 
 ## Start the lab
 
@@ -90,6 +93,14 @@ the lab is ready to use.
 > **Note:** Use `kathara connect <node>` to open a shell inside a node.
 > `kathara exec` may misinterpret flags like `-c` as internal arguments.
 
+> **Note:** Before running any demo, start the C2 receiver on the attacker — it also
+> acts as the HTTP server required for the beacon and for Demo 1:
+>
+> ```bash
+> kathara connect attacker
+> python3 /home/receiver.py
+> ```
+
 ## Demo 1 — Verify egress filtering
 
 Open a shell on the victim and verify the firewall rules are in place:
@@ -107,7 +118,7 @@ ping -c 3 10.0.0.10
 ```bash
 # Test 2 — TCP/80 outbound should be allowed
 curl -s http://10.0.0.10/
-# Expected: a response arrives
+# Expected: empty response (the server is running — no body is served at /)
 ```
 
 ## Demo 2 — Covert channel exfiltration and C2
