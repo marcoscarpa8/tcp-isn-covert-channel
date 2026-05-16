@@ -1,0 +1,17 @@
+# ===========================================================================
+# local.rules — Snort 3 custom rules for TCP ISN covert channel detection
+# Course: Internet Security (M8) — University of Padova
+# Rule syntax ref: M8 slides 24-27
+# ===========================================================================
+
+# RULE 1 — SYN-only flood to HTTP port (covert channel signature)
+# Fires after 3+ SYN-only packets from same source in 10 seconds.
+# Legitimate HTTP clients complete the handshake after 1 SYN.
+alert tcp $HOME_NET any -> $EXTERNAL_NET 80 (msg:"[COVERT] High-rate SYN-only to TCP/80 - possible ISN covert channel"; flags:S; detection_filter:track by_src, count 3, seconds 10; sid:1000001; rev:1;)
+
+# RULE 2 — Periodic HTTP beacon (C2 command delivery)
+# Fires after 2+ GET requests from same source in 30 seconds.
+alert tcp $HOME_NET any -> $EXTERNAL_NET 80 (msg:"[C2] Periodic HTTP beacon to external host"; content:"GET"; detection_filter:track by_src, count 2, seconds 30; sid:1000002; rev:1;)
+
+# RULE 3 — ICMP from internal (firewall sanity check)
+alert icmp $HOME_NET any -> $EXTERNAL_NET any (msg:"[POLICY] ICMP from internal - should be blocked by egress filter"; sid:1000003; rev:1;)

@@ -1,0 +1,4 @@
+ip addr add 10.0.0.10/24 dev eth0
+ip link set eth0 up
+ip route add default via 10.0.0.1
+iptables -A OUTPUT -p tcp --tcp-flags RST RST -d 10.0.1.20 -j DROP

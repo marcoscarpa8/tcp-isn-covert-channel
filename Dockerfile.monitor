@@ -1,0 +1,44 @@
+# =============================================================================
+# Dockerfile.monitor — Kathará monitor node with Snort 3 + Python detector
+# =============================================================================
+#
+# Approach A (recommended): Extend the official Cisco Talos Snort3 image
+# and add networking tools + Python/Scapy for Kathará compatibility.
+#
+# Build:
+#   docker build -t kathara/snort3-monitor -f Dockerfile.monitor .
+#
+# Usage in lab.conf:
+#   monitor[image]=kathara/snort3-monitor
+#
+# If Approach A fails (e.g. apt-get not available in ciscotalos image),
+# see Dockerfile.monitor.fromsource in the same directory.
+# =============================================================================
+
+FROM ciscotalos/snort3
+
+USER root
+
+# --- Networking tools required by Kathará ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iproute2 \
+    iputils-ping \
+    net-tools \
+    tcpdump \
+    procps \
+    ethtool \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- Python 3 + Scapy for the entropy detector ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-scapy \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- Snort directories ---
+RUN mkdir -p /var/log/snort /root/snort/rules
+
+# --- Verify Snort is working ---
+RUN snort --version
+
+WORKDIR /root

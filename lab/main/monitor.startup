@@ -1,0 +1,19 @@
+ip link set eth0 up
+ip link set eth1 up
+
+ethtool -K eth0 rx off tx off gro off 2>/dev/null || true
+ethtool -K eth1 rx off tx off gro off 2>/dev/null || true
+
+mkdir -p /var/log/snort
+
+tr -d '\r' < /etc/snort/snort.lua > /tmp/clean_snort.lua
+tr -d '\r' < /etc/snort/rules/local.rules > /tmp/clean.rules
+
+tcpdump -i eth1 -w /hosthome/covert_session.pcap 'port 80' &
+
+echo ""
+echo "============================================"
+echo " Monitor ready. Snort3 available."
+echo " Run Snort manually:"
+echo " snort -c /tmp/clean_snort.lua -R /tmp/clean.rules -i eth1 --daq-batch-size 1"
+echo "============================================"

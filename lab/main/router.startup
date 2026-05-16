@@ -1,0 +1,11 @@
+ip addr add 10.0.0.1/24 dev eth0
+ip addr add 10.0.1.1/24 dev eth1
+ip link set eth0 up
+ip link set eth1 up
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -P FORWARD DROP
+iptables -P INPUT DROP
+iptables -P OUTPUT ACCEPT
+iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -p tcp --dport 80 -s 10.0.1.0/24 -d 10.0.0.0/24 -j ACCEPT
+iptables -A FORWARD -p icmp -s 10.0.1.0/24 -j DROP

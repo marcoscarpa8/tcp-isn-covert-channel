@@ -1,0 +1,19 @@
+ip addr add 10.0.1.20/24 dev eth0
+ip link set eth0 up
+ip route add default via 10.0.1.1
+iptables -A OUTPUT -p tcp --tcp-flags RST RST -d 10.0.0.10 -j DROP
+
+# File sensibili simulati
+mkdir -p /opt/corpdata
+echo "mario.rossi:x:1001:1001::/home/mario:/bin/bash
+anna.verdi:x:1002:1002::/home/anna:/bin/bash
+admin:x:0:0:root:/root:/bin/bash" > /opt/corpdata/employees.txt
+
+echo "DB_HOST=10.0.1.5
+DB_USER=admin
+DB_PASS=Sup3rS3cr3t!
+API_KEY=sk-prod-a1b2c3d4e5f6" > /opt/corpdata/.env
+
+echo "10.0.1.5 db-server
+10.0.1.6 backup-server
+10.0.1.7 hr-internal" >> /etc/hosts
