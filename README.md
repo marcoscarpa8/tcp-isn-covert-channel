@@ -261,22 +261,23 @@ Expected output:
 
 ### Demo 4b — Legitimate traffic: no ISN anomaly, no Snort alerts
 
-Stop the covert channel on the victim (`Ctrl+C` on `sender.py`), then simulate
-normal HTTP browsing from the victim:
+Stop the covert channel on the victim (`Ctrl+C` on `sender.py`).
 
-```bash
-# On victim — generate legitimate TCP/80 traffic (no covert channel)
-for i in $(seq 1 20); do curl -s http://10.0.0.10/ > /dev/null; sleep 0.5; done
-```
-
-On the **monitor**, capture this traffic separately:
+On the **monitor**, start a fresh capture:
 
 ```bash
 # On monitor
 tcpdump -i eth1 -w /hosthome/baseline.pcap 'port 80' &
 ```
 
-Wait for the curl loop to finish, then stop and analyze:
+Then on the **victim**, simulate normal HTTP browsing:
+
+```bash
+# On victim — generate legitimate TCP/80 traffic (no covert channel)
+for i in $(seq 1 20); do curl -s http://10.0.0.10/ > /dev/null; sleep 0.5; done
+```
+
+Wait for the curl loop to finish, then stop the capture and analyze:
 
 ```bash
 # On monitor
