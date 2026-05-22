@@ -119,6 +119,7 @@ ping -c 3 10.0.0.10
 # Test 2 — TCP/80 outbound should be allowed
 curl -s http://10.0.0.10/
 # Expected: empty response (the server is running — no body is served at /)
+# Quit: Ctrl + C
 ```
 
 ## Demo 2 — Covert channel exfiltration and C2
@@ -209,8 +210,27 @@ Stop Snort with `Ctrl+C` when done.
 
 ## Demo 4 — Shannon entropy detection (anomaly-based)
 
-The monitor captures all TCP/80 traffic automatically via tcpdump (started by
-`monitor.startup`). After running Demo 2, stop the capture and analyze:
+This demo is split into two scenarios to show the contrast between covert and
+legitimate traffic.
+
+### Demo 4a — Covert traffic: entropy flagged during active exfiltration
+
+Make sure `sender.py` is running on the victim and `receiver.py` on the attacker.
+On the **monitor**, reset the pcap capture:
+
+```bash
+# On monitor
+pkill tcpdump
+tcpdump -i eth1 -w /hosthome/covert_session.pcap 'port 80' &
+```
+
+On the **attacker**, trigger a data exfiltration:
+
+```
+run cat /opt/corpdata/.env
+```
+
+Wait for the exfiltration to complete (~8 seconds), then stop the capture and analyze:
 
 ```bash
 # On monitor
@@ -225,19 +245,72 @@ Expected output:
   ISN Entropy Analysis — Covert Channel Detection
   Method: Shannon entropy on TCP SYN sequence numbers
 ================================================================================
-  Threshold: 6.0 bits/byte  (normal ISN ≈ 7.5+, covert ISN ≈ 3.0-5.0)
+  Threshold: 6.0 bits/byte  (normal ISN ~7.5+, covert ISN ~3.0-5.0)
 
-  Source IP          Window       #ISN   Full H    High H    Low H     Status
-  --------------------------------------------------------------------------------
-  10.0.1.20          0-29         30     3.9586    1.0000    4.9172    *** SUSPICIOUS ***
-  10.0.1.20          15-44        30     4.7540    2.4055    5.2151    *** SUSPICIOUS ***
-  --------------------------------------------------------------------------------
+  Source IP     Window  #ISN  Full H  High H  Low H   Status
+  -----------------------------------------------------------
+  10.0.1.20     0-29    30    3.9586  1.0000  4.9172  *** SUSPICIOUS ***
+  10.0.1.20     15-44   30    4.7540  2.4055  5.2151  *** SUSPICIOUS ***
+  -----------------------------------------------------------
   ALERT: flagged source(s): 10.0.1.20
 ```
 
 **Key values**:
-- `Full H` ≈ 3.9–5.6 vs normal ≈ 7.5+ — structured data in ISN field
-- `High H` ≈ 0–2 — fixed magic marker `0xCAFE` in the upper 16 bits of every ISN
+- `Full H` ≈ 3.9–5.6 — well below the 6.0 threshold, structured data in ISN field
+- `High H` ≈ 0–2 — the magic marker `0xCAFE` is constant in the upper 16 bits of every covert SYN
+
+### Demo 4b — Legitimate traffic: no ISN anomaly, no Snort alerts
+
+Stop the covert channel on the victim (`Ctrl+C` on `sender.py`), then simulate
+normal HTTP browsing from the victim:
+
+```bash
+# On victim — generate legitimate TCP/80 traffic (no covert channel)
+for i in $(seq 1 20); do curl -s http://10.0.0.10/ > /dev/null; sleep 0.5; done
+```
+
+On the **monitor**, capture this traffic separately:
+
+```bash
+# On monitor
+tcpdump -i eth1 -w /hosthome/baseline.pcap 'port 80' &
+```
+
+Wait for the curl loop to finish, then stop and analyze:
+
+```bash
+# On monitor
+pkill tcpdump
+python3 /root/detector.py /hosthome/baseline.pcap
+```
+
+Expected output:
+
+```
+================================================================================
+  ISN Entropy Analysis — Covert Channel Detection
+================================================================================
+  Threshold: 6.0 bits/byte  (normal ISN ~7.5+, covert ISN ~3.0-5.0)
+
+  Source IP     Window  #ISN  Full H  High H  Low H   Status
+  -----------------------------------------------------------
+  10.0.1.20     0-29    30    6.4484  5.5276  5.6025  normal
+  10.0.1.20     15-44   30    6.4880  5.6610  5.6276  normal
+  -----------------------------------------------------------
+  OK: No anomalies detected.
+```
+
+At the same time, Snort produces **no alerts** — with `sender.py` stopped there
+is no SYN-only flood (sid:1000001) and no periodic HTTP beacon (sid:1000002).
+
+**Summary of the contrast**:
+
+| | Covert traffic (Demo 4a) | Legitimate traffic (Demo 4b) |
+|---|---|---|
+| Full H | 3.9–5.6 → **SUSPICIOUS** | 6.4–6.5 → normal |
+| High H | 0–2 (fixed 0xCAFE) | 5.5–5.7 (random) |
+| Snort sid:1000001 | fires | silent |
+| Snort sid:1000002 | fires | silent |
 
 ## Key takeaway
 
