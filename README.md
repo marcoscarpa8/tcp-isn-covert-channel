@@ -119,6 +119,10 @@ ping -c 3 10.0.0.10
 # Test 2 — TCP/80 outbound should be allowed
 curl -s http://10.0.0.10/
 # Expected: empty response (the server is running — no body is served at /)
+# If receiver.py is not running, curl hangs indefinitely instead of failing fast.
+# This is expected: the attacker drops RST packets via iptables (required for Scapy
+# to control raw TCP without kernel interference), so the victim never receives
+# a "connection refused" and curl waits for a response that never comes.
 # Quit: Ctrl + C
 ```
 
